@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/devel/lib/circle_ransac/circle_ransac_node",
-            "args": ["./././src/circle_ransac/src/points4.txt"],
+            "args": ["./././src/circle_ransac/src/points2.txt"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
