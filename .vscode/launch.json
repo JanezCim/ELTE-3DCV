@@ -28,7 +28,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/devel/lib/sphere_ransac/sphere_ransac_node",
-            "args": ["./././src/sphere_ransac/src/Sphere1.xyz"],
+            "args": ["./././src/sphere_ransac/src/Sphere2.xyz"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

@@ -4,194 +4,16 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <vector>
-// #include "sphere_ransac/vector3d.hpp"
 
 using namespace cv;
 using namespace std;
-typedef float f;
 
 // ************** CHANGABLES****
-// distance from sphere in pixles, inside of which other points are considered inliers
-const double thresh = 5.0;
+// distance from sphere, inside of which other points are considered inliers
+const double thresh = 0.1;
 // what confidence does the algorithm need to reach to be satisfied with the found sphere
 const double confidence = 0.99;
-
-// file to output the xyz file to
-std::string file = "output.xyz";
 // *****************************
-
-class vector3d
-{
-public:
-    f x,y,z;
-    vector3d()  //constructor
-    {
-        x=0;
-        y=0;
-        z=0;
-    }
-
-    vector3d(f x1,f y1,f z1=0)     //initializing object with values.
-    {
-        x=x1;
-        y=y1;
-        z=z1;
-    }
-    vector3d(const vector3d &vec);    //copy constructor
-    vector3d operator+(const vector3d &vec);    //addition
-    vector3d &operator+=(const vector3d &vec);  ////assigning new result to the vector
-    vector3d operator-(const vector3d &vec);    //substraction
-    vector3d &operator-=(const vector3d &vec);  //assigning new result to the vector
-    vector3d operator*(f value);    //multiplication
-    vector3d &operator*=(f value);  //assigning new result to the vector.
-    vector3d operator/(f value);    //division
-    vector3d &operator/=(f value);  //assigning new result to the vector
-    vector3d &operator=(const vector3d &vec);
-    f dot_product(const vector3d &vec); //scalar dot_product
-    vector3d cross_product(const vector3d &vec);    //cross_product
-    f magnitude();  //magnitude of the vector
-    vector3d normalization();   //nor,malized vector
-    f square(); //gives square of the vector
-
-    f distance(const vector3d &vec);    //gives distance between two vectors
-    f show_X(); //return x
-    f show_Y(); //return y
-    f show_Z(); //return z
-    void disp();    //display value of vectors
-};
-
-vector3d::vector3d(const vector3d &vec)
-{
-    x=vec.x;
-    y=vec.y;
-    z=vec.z;
-}
-
-//addition
-
-vector3d vector3d ::operator+(const vector3d &vec)
-{
-    return vector3d(x+vec.x,y+vec.y,z+vec.z);
-}
-
-vector3d &vector3d ::operator+=(const vector3d &vec)
-{
-    x+=vec.x;
-    y+=vec.y;
-    z+=vec.z;
-    return *this;
-}
-//substraction//
-vector3d vector3d ::operator-(const vector3d &vec)
-{
-    return vector3d(x-vec.x,y-vec.y,z-vec.z);
-}
-
-vector3d &vector3d::operator-=(const vector3d &vec)
-{
-    x-=vec.x;
-    y-=vec.y;
-    z-=vec.z;
-    return *this;
-}
-
-//scalar multiplication
-
-vector3d vector3d ::operator*(f value)
-{
-    return vector3d(x*value,y*value,z*value);
-}
-
-vector3d &vector3d::operator*=(f value)
-{
-    x*=value;
-    y*=value;
-    z*=value;
-    return *this;
-}
-
-//scalar division
-vector3d vector3d ::operator/(f value)
-{
-    assert(value!=0);
-    return vector3d(x/value,y/value,z/value);
-}
-
-vector3d &vector3d ::operator/=(f value)
-{
-    assert(value!=0);
-    x/=value;
-    y/=value;
-    z/=value;
-    return *this;
-}
-
-
-vector3d &vector3d::operator=(const vector3d &vec)
-{
-    x=vec.x;
-    y=vec.y;
-    z=vec.z;
-    return *this;
-}
-
-//Dot product
-f vector3d::dot_product(const vector3d &vec)
-{
-    return x*vec.x+vec.y*y+vec.z*z;
-}
-
-//cross product
-vector3d vector3d ::cross_product(const vector3d &vec)
-{
-    f ni=y*vec.z-z*vec.y;
-    f nj=z*vec.x-x*vec.z;
-    f nk=x*vec.y-y*vec.x;
-    return vector3d(ni,nj,nk);
-}
-
-f vector3d::magnitude()
-{
-    return sqrt(square());
-}
-
-f vector3d::square()
-{
-    return x*x+y*y+z*z;
-}
-
-vector3d vector3d:: normalization()
-{
-    assert(magnitude()!=0);
-    *this/=magnitude();
-    return *this;
-}
-
-f vector3d::distance(const vector3d &vec)
-{
-    vector3d dist=*this-vec;
-    return dist.magnitude();
-}
-
-f vector3d::show_X()
-{
-    return x;
-}
-
-f vector3d::show_Y()
-{
-    return y;
-}
-
-f vector3d::show_Z()
-{
-    return z;
-}
-
-void vector3d::disp()
-{
-    cout<<x<<" "<<y<<" "<<z<<endl;
-}
 
 size_t getIterationNumber(const double confidence_,
 	const size_t inlier_number_,
@@ -206,43 +28,56 @@ size_t getIterationNumber(const double confidence_,
 	return log_confidence / log(1.0 - pow_inlier_ratio);
 }
 
-
-double determinant(vector<vector<double > >& a , int n)
+double Determinant(double** a, int n)
 {
-  int i, j, j1, j2;
-  double d = 0;
-  vector<vector<double > > m(4, vector<double>(4,0));
+	int i, j, j1, j2;
+	double det = 0;
+	double** m = NULL;
 
-  if (n == 2)
-  {
-    // Terminate recursion.
-    d = a[0][0] * a[1][1] - a[1][0] * a[0][1];
-  }
-  else
-  {
-    d = 0;
-    for (j1 = 0; j1 < n; j1++)  // Do each column.
-    {
-      for (i = 1; i < n; i++)  // Create minor.
-      {
-        j2 = 0;
-        for (j = 0; j < n; j++)
-        {
-          if (j == j1)
-            continue;
-          m[i - 1, j2] = a[i, j];
-          j2++;
-        }
-      }
+	if (n < 1) { /* Error */
 
-      // Sum (+/-)cofactor * minor.
-      d = d + pow(-1.0, j1) * a[0][j1] * determinant(m, n - 1);
-    }
-  }
-  return d;
+	}
+	else if (n == 1) { /* Shouldn't get used */
+		det = a[0][0];
+	}
+	else if (n == 2) {
+		det = a[0][0] * a[1][1] - a[1][0] * a[0][1];
+	}
+	else {
+		det = 0;
+		for (j1 = 0; j1 < n; j1++) {
+			m = new double*[n - 1];
+			for (i = 0; i < n - 1; i++)
+				m[i] = new double[n - 1];
+			for (i = 1; i < n; i++) {
+				j2 = 0;
+				for (j = 0; j < n; j++) {
+					if (j == j1)
+						continue;
+					m[i - 1][j2] = a[i][j];
+					j2++;
+				}
+			}
+			det += pow(-1.0, 1.0 + j1 + 1.0) * a[0][j1] * Determinant(m, n - 1);
+			for (i = 0; i < n - 1; i++)
+				delete(m[i]);
+			delete(m);
+		}
+	}
+	return(det);
 }
 
-void findSphere1(const Point3d& p1, const Point3d& p2, const Point3d& p3, const Point3d& p4,
+/**
+ * @brief fits a sphere to 4 input points
+ * 
+ * @param p1 first input point
+ * @param p2 second input point
+ * @param p3 third input point
+ * @param p4 fourth input point
+ * @param out_center center of the sphere - output 
+ * @param out_radius radius of the sphere - output
+ */
+void findSphere(const Point3d& p1, const Point3d& p2, const Point3d& p3, const Point3d& p4,
                 Point3d& out_center, double& out_radius){ 
   // inti a 4x3 vector filled with zeros
   vector<vector<double > > P(4, vector<double>(3,0));
@@ -255,19 +90,25 @@ void findSphere1(const Point3d& p1, const Point3d& p2, const Point3d& p3, const 
   P[0][0] = p1.x;
   P[0][1] = p1.y;
   P[0][2] = p1.z;
+
   P[1][0] = p2.x;
   P[1][1] = p2.y;
   P[1][2] = p2.z;
+  
   P[2][0] = p3.x;
   P[2][1] = p3.y;
   P[2][2] = p3.z;
+  
   P[3][0] = p4.x;
   P[3][1] = p4.y;
   P[3][2] = p4.z;
 
   double r, m11, m12, m13, m14, m15;
 
-  vector<vector<double > > a (4, vector<double>(4,0));
+  
+  double** a = new double*[4];
+	for (size_t i = 0; i < 4; i++)
+		a[i] = new double[4];
 
   // Find minor 1, 1.
   for (int i = 0; i < 4; i++)
@@ -277,7 +118,7 @@ void findSphere1(const Point3d& p1, const Point3d& p2, const Point3d& p3, const 
     a[i][2] = P[i][2];
     a[i][3] = 1;
   }
-  m11 = determinant(a, 4);
+  m11 = Determinant(a, 4);
 
   // Find minor 1, 2.
   for (int i = 0; i < 4; i++)
@@ -287,27 +128,27 @@ void findSphere1(const Point3d& p1, const Point3d& p2, const Point3d& p3, const 
     a[i][2] = P[i][2];
     a[i][3] = 1;
   }
-  m12 = determinant(a, 4);
+  m12 = Determinant(a, 4);
 
   // Find minor 1, 3.
   for (int i = 0; i < 4; i++)
   {
-    a[i][0] = P[i][0] * P[i][0] + P[i][1] * P[i][1] + P[i][2] * P[i][2];
-    a[i][1] = P[i][0];
+    a[i][0] = P[i][0];
+    a[i][1] = P[i][0] * P[i][0] + P[i][1] * P[i][1] + P[i][2] * P[i][2];
     a[i][2] = P[i][2];
     a[i][3] = 1;
   }
-  m13 = determinant(a, 4);
+  m13 = Determinant(a, 4);
 
   // Find minor 1, 4.
   for (int i = 0; i < 4; i++)
   {
-    a[i][0] = P[i][0] * P[i][0] + P[i][1] * P[i][1] + P[i][2] * P[i][2];
-    a[i][1] = P[i][0];
-    a[i][2] = P[i][1];
+    a[i][0] = P[i][0];
+    a[i][1] = P[i][1];
+    a[i][2] = P[i][0] * P[i][0] + P[i][1] * P[i][1] + P[i][2] * P[i][2];
     a[i][3] = 1;
   }
-  m14 = determinant(a, 4);
+  m14 = Determinant(a, 4);
 
   // Find minor 1, 5.
   for (int i = 0; i < 4; i++)
@@ -317,7 +158,7 @@ void findSphere1(const Point3d& p1, const Point3d& p2, const Point3d& p3, const 
     a[i][2] = P[i][1];
     a[i][3] = P[i][2];
   }
-  m15 = determinant(a, 4);
+  m15 = Determinant(a, 4);
 
   // Calculate result.
   if (m11 == 0)
@@ -330,7 +171,7 @@ void findSphere1(const Point3d& p1, const Point3d& p2, const Point3d& p3, const 
   else
   {
     m_X0 = 0.5 * m12 / m11;
-    m_Y0 = -0.5 * m13 / m11;
+    m_Y0 = 0.5 * m13 / m11;
     m_Z0 = 0.5 * m14 / m11;
     m_Radius = sqrt(m_X0 * m_X0 + m_Y0 * m_Y0 + m_Z0 * m_Z0 - m15 / m11);
   }
@@ -341,59 +182,32 @@ void findSphere1(const Point3d& p1, const Point3d& p2, const Point3d& p3, const 
   out_radius = m_Radius;
 } 
 
-void findSphere(const Point3d& pt1, const Point3d& pt2, const Point3d& pt3, const Point3d& pt4,
-                Point3d& out_center, double& out_radius){            
-   
-  vector3d p1 = vector3d(pt1.x, pt1.y, pt1.z);
-  vector3d p2 = vector3d(pt2.x, pt2.y, pt2.z);
-  vector3d p3 = vector3d(pt3.x, pt3.y, pt3.z);
-
-  // triangle "edges"
-  vector3d t = p2-p1;
-  vector3d u = p3-p1;
-  vector3d v = p3-p2;
-
-  // triangle normal
-  vector3d w = t.cross_product(u);
-  double wsl = w.square();
-  if (wsl<10e-14) return; // area of the triangle is too small (you may additionally check the points for colinearity if you are paranoid)
-
-  // helpers
-  double iwsl2 = 1.0 / (2.0*wsl);
-  double tt = t.dot_product(t);
-  double uu = u.dot_product(u);
-  double uv = u.dot_product(v);
-  double tv = t.dot_product(v);
-  double vv = v.dot_product(v);
-
-  // result circle
-  vector3d circCenter = p1 + (u*tt*uv - t*uu*tv) * iwsl2;
-  double   circRadius = sqrt(tt * uu * vv * iwsl2*0.5);
-  vector3d circAxis   = w / sqrt(wsl);
-
-  out_center.x = circCenter.x;
-  out_center.y = circCenter.y;
-  out_center.z = circCenter.z;
-  out_radius = circRadius;
-
-}
-
 double getRandomNumber()
 {
 	return static_cast<double>(rand()) / RAND_MAX;
 }
 
+// Distance in 3d
 double dist3d(const Point3d& p1, const Point3d& p2){
   return sqrt((p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y)+ (p1.z-p2.z)*(p1.z-p2.z));
 }
 
-// Apply RANSAC to fit points to a sphere
+/**
+ * @brief Apply RANSAC to fit points to a sphere 
+ * 
+ * @param points_ input 3d points of a sphere
+ * @param inliers_ output of indices of the inliers of the obtained sphere
+ * @param found_sphere_ output of parameters of the obtained sphere
+ * @param threshold_ the inlier-outlier threshold used for determining which points are inliers
+ * @param confidence_ the required iteration number
+ * @return int 0 if ransac had an error, 1 otherwise
+ */
 int fitSphereRANSAC(
 	const std::vector<cv::Point3d> * const points_, // The points used for the sphere fitting
-	std::vector<int> &inliers_, // The inliers of the obtained sphere
-	cv::Mat &found_sphere_, // The parameters of the obtained sphere
-	const double &threshold_, // The inlier-outlier threshold used for determining which points are inliers
-	const double &confidence_) // The required iteration number
+	std::vector<int> &inliers_,
+	cv::Mat &found_sphere_,
+	const double &threshold_,
+	const double &confidence_)
 	{
 
   // check if given points vector is not empty
@@ -436,6 +250,8 @@ int fitSphereRANSAC(
     Point3d c; //found center
     double r; // found radius
     findSphere(pt1,pt2,pt3,pt4,c,r);
+
+    // if(fabs(fabs(c.x)-0.835866)<0.1 && fabs(fabs(c.y)-0.290592)<0.1 && fabs(fabs(c.z)-0.290592)<0.1)
 
     // Iterate through all the points and count the inliers
     tmp_inliers.resize(0);
@@ -497,18 +313,11 @@ int main(int argc, char* argv[]){
   // a temporary point to hold the three coords in while we read them all
   Point3d tmp;
 
-  int maxX = 0;
-  int maxY = 0;
-  int maxZ = 0;
   double xCntr, yCntr, zCntr = 0;
   // read from infile into the two coords in tmp
   while (myfile >> tmp.x && myfile >> tmp.y && myfile >> tmp.z){
     // add a copy of tmp to points
     points.push_back(tmp);
-
-    // if(tmp.x>maxX) maxX = tmp.x;
-    // if(tmp.y>maxY) maxY = tmp.y;
-    // if(tmp.z>maxZ) maxZ = tmp.z;
 
     xCntr+=tmp.x;
     yCntr+=tmp.y;
@@ -532,8 +341,8 @@ int main(int argc, char* argv[]){
     return -1;
   }
   
-  cout << "points center of mass: " + to_string(xCntr) + " " + to_string(yCntr) + " " + to_string(zCntr) << endl;
-  cout << "sphere: " + to_string(found_sphere.at<double>(0))+" "+to_string(found_sphere.at<double>(1))+" "+to_string(found_sphere.at<double>(2))+" "+to_string(found_sphere.at<double>(3)) << endl;
+  // cout << "points center of mass: " + to_string(xCntr) + " " + to_string(yCntr) + " " + to_string(zCntr) << endl; //debug stuff
+  cout << " SOLUTION - sphere: " + to_string(found_sphere.at<double>(0))+" "+to_string(found_sphere.at<double>(1))+" "+to_string(found_sphere.at<double>(2))+" "+to_string(found_sphere.at<double>(3)) << endl;
 
   return 0;
 }
