@@ -8,7 +8,6 @@
             "args": [
                 "-j4",
                 "-DCMAKE_BUILD_TYPE=DEBUG",
-                "-DCMAKE_EXPORT_COMPILE_COMMANDS=1",
                 "-DCMAKE_CXX_STANDARD=14"
             ],
             "problemMatcher": [],
