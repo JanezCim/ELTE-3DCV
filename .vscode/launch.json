@@ -41,6 +41,25 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "Homography",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/devel/lib/homography/homography_node",
+            "args": ["./././src/homography/src/1.jpg", "./././src/homography/src/11.jpg"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
         }
 
     ]
