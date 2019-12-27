@@ -6,10 +6,33 @@
 #include <vector>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/xfeatures2d/nonfree.hpp>
-#include <chrono>  
+#include <chrono> 
 
 using namespace cv;
 using namespace std;
+
+string type2str(int type) {
+  string r;
+
+  uchar depth = type & CV_MAT_DEPTH_MASK;
+  uchar chans = 1 + (type >> CV_CN_SHIFT);
+
+  switch ( depth ) {
+    case CV_8U:  r = "8U"; break;
+    case CV_8S:  r = "8S"; break;
+    case CV_16U: r = "16U"; break;
+    case CV_16S: r = "16S"; break;
+    case CV_32S: r = "32S"; break;
+    case CV_32F: r = "32F"; break;
+    case CV_64F: r = "64F"; break;
+    default:     r = "User"; break;
+  }
+
+  r += "C";
+  r += (chans+'0');
+
+  return r;
+}
 
 // Detecting point correspondences in two images
 void detectFeatures(
@@ -138,6 +161,29 @@ int main(int argc, char* argv[]){
 		2.0); // The inlier-outlier threshold
   
 
+  // finding the homography: https://stackoverflow.com/questions/22780102/find-homography-matrix-from-fundamental-matrix
+  cv::Mat Eij;
+  SVD::solveZ(F.t(), Eij);
+  cv::Mat skew_Eij(Size(3,3),CV_64FC1, Scalar(0));
+
+  // skew: https://en.wikipedia.org/wiki/Cross_product#Conversion_to_matrix_multiplication
+  skew_Eij.at<double>(0,1) = -Eij.at<double>(2);
+  skew_Eij.at<double>(0,2) = Eij.at<double>(1);
+  skew_Eij.at<double>(1,0) = Eij.at<double>(2);
+  skew_Eij.at<double>(1,2) = -Eij.at<double>(0);
+  skew_Eij.at<double>(2,0) = -Eij.at<double>(1);
+  skew_Eij.at<double>(2,1) = Eij.at<double>(0);
+
+  cout<< Eij << endl;
+  cout<< skew_Eij << endl;
+
+  cv::Mat Hom;
+  Hom = skew_Eij*F;
+
+  Mat trans_img;
+  warpPerspective(src_img, trans_img, Hom, dst_img.size());
+  
+
   // Draw the points and the corresponding epipolar lines
 	constexpr double resize_by = 3.0;
 	cv::Mat tmp_src_img, tmp_dst_img;
@@ -155,9 +201,12 @@ int main(int argc, char* argv[]){
 		inlier_matches[inl_idx].trainIdx = inl_idx;
 	}
 
+
+
   // DEBUG: draw circles to check if the coresponding points are true
   // circle(src_img, src_inliers[50].pt, 10, Scalar(0,0,255), 10);
   // circle(dst_img, dst_inliers[50].pt, 10, Scalar(0,0,255), 10);
+
 
 
   int key;
@@ -174,6 +223,7 @@ int main(int argc, char* argv[]){
     // show the resulting image
     imshow("source", src_img);
     imshow("destination", dst_img);
+    imshow("warped image", trans_img);
   }
 
   return 0;

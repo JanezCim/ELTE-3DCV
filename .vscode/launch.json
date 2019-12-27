@@ -47,7 +47,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/devel/lib/homography/homography_node",
-            "args": ["./././src/homography/src/1.jpg", "./././src/homography/src/11.jpg"],
+            "args": ["./././src/homography/src/11.jpg", "./././src/homography/src/1.jpg"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
