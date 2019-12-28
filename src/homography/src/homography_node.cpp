@@ -132,9 +132,6 @@ int main(int argc, char* argv[]){
     cout << "Imported the destination image :)" << endl;
   }
 
-  resize(src_img, src_img, Size(),0.25,0.25);
-  resize(dst_img, dst_img, Size(),0.25,0.25);
-
   vector<Point2d> src_points, dst_points;
   detectFeatures(src_img, dst_img, src_points, dst_points);
 
@@ -182,11 +179,10 @@ int main(int argc, char* argv[]){
 		inlier_matches[inl_idx].trainIdx = inl_idx;
 	}
 
+	// setup A matrix according to the slide 45 in http://cg.elte.hu/~hajder/vision/slides/lec01_camera.pdf
 	int sample_number = norm_src_inliers.size();
 	cv::Mat A(sample_number*2, 9, CV_32F);
-
-	for (int i = 0; i < sample_number; i++)
-	{
+	for (int i = 0; i < sample_number; i++){
 		const float u = norm_src_inliers[i].x, v = norm_src_inliers[i].y;
 		const float ud = norm_dst_inliers[i].x, vd = norm_dst_inliers[i].y;
 
@@ -211,9 +207,12 @@ int main(int argc, char* argv[]){
 		A.at<float>(i*2+1,8)=-v;
 	}
 
+	// apply the SVD to A
 	Mat w, u, vt;
 	cv::SVDecomp(A, w, u, vt);
 
+	// the last (9th) value of vt is the optimal homography
+	// here we convert it from 9x1 to 3x3
 	cv::Mat h(3, 3, CV_32F);
 	h.at<float>(0,0)=vt.at<float>(8,0);
 	h.at<float>(0,1)=vt.at<float>(8,1);
@@ -225,14 +224,21 @@ int main(int argc, char* argv[]){
 	h.at<float>(2,1)=vt.at<float>(8,7);
 	h.at<float>(2,2)=vt.at<float>(8,8);
 
+	// convert the homography to double
 	h.convertTo(h, CV_64F);
 
 	// denormalize homography
-	h = T2.t() * h * T1;
+	h = T2.inv() * h * T1;
 
+	// wrap the prespective with new homography
 	Mat trans_img;
-	warpPerspective(src_img, trans_img, h, src_img.size());
+	warpPerspective(src_img, trans_img, h, dst_img.size());
 
+	// resize the image before showing it
+	float resize_factor = 0.25;
+	resize(src_img, src_img, Size(),resize_factor,resize_factor);
+  resize(dst_img, dst_img, Size(),resize_factor,resize_factor);
+	resize(trans_img, trans_img, Size(),resize_factor,resize_factor);
 
   int key;
   while (1)
