@@ -161,52 +161,77 @@ int main(int argc, char* argv[]){
 		2.0); // The inlier-outlier threshold
   
 
-  // finding the homography: https://stackoverflow.com/questions/22780102/find-homography-matrix-from-fundamental-matrix
-  cv::Mat Eij;
-  SVD::solveZ(F.t(), Eij);
-  cv::Mat skew_Eij(Size(3,3),CV_64FC1, Scalar(0));
-
-  // skew: https://en.wikipedia.org/wiki/Cross_product#Conversion_to_matrix_multiplication
-  skew_Eij.at<double>(0,1) = -Eij.at<double>(2);
-  skew_Eij.at<double>(0,2) = Eij.at<double>(1);
-  skew_Eij.at<double>(1,0) = Eij.at<double>(2);
-  skew_Eij.at<double>(1,2) = -Eij.at<double>(0);
-  skew_Eij.at<double>(2,0) = -Eij.at<double>(1);
-  skew_Eij.at<double>(2,1) = Eij.at<double>(0);
-
-  cout<< Eij << endl;
-  cout<< skew_Eij << endl;
-
-  cv::Mat Hom;
-  Hom = skew_Eij*F;
-
-  Mat trans_img;
-  warpPerspective(src_img, trans_img, Hom, dst_img.size());
-  
-
   // Draw the points and the corresponding epipolar lines
 	constexpr double resize_by = 3.0;
 	cv::Mat tmp_src_img, tmp_dst_img;
 	// resize(src_img, tmp_src_img, cv::Size(), tmp_src_img.cols / resize_by, tmp_src_img.rows / resize_by);
 	// resize(dst_img, tmp_dst_img, cv::Size(), tmp_dst_img.cols / resize_by, tmp_dst_img.rows / resize_by);
 
-	std::vector<cv::KeyPoint> src_inliers(inliers.size()), dst_inliers(inliers.size());
+	std::vector<Point2d> src_inliers(inliers.size()), dst_inliers(inliers.size());
+	std::vector<Point2d> norm_src_inliers(inliers.size()), norm_dst_inliers(inliers.size());
 	std::vector<cv::DMatch> inlier_matches(inliers.size());
 	for (auto inl_idx = 0; inl_idx < inliers.size(); ++inl_idx)
 	{
 		// Construct the cv::Matches std::vector for the drawing
-		src_inliers[inl_idx].pt = src_points[inliers[inl_idx]];// / resize_by;
-		dst_inliers[inl_idx].pt = dst_points[inliers[inl_idx]];// / resize_by;
+		src_inliers[inl_idx] = src_points[inliers[inl_idx]];// / resize_by;
+		dst_inliers[inl_idx] = dst_points[inliers[inl_idx]];// / resize_by;
+		norm_src_inliers[inl_idx] = norm_src_points[inliers[inl_idx]];// / resize_by;
+		norm_dst_inliers[inl_idx] = norm_dst_points[inliers[inl_idx]];// / resize_by;
+
 		inlier_matches[inl_idx].queryIdx = inl_idx;
 		inlier_matches[inl_idx].trainIdx = inl_idx;
 	}
 
+	int sample_number = norm_src_inliers.size();
+	cv::Mat A(sample_number*2, 9, CV_32F);
 
+	for (int i = 0; i < sample_number; i++)
+	{
+		const float u = norm_src_inliers[i].x, v = norm_src_inliers[i].y;
+		const float ud = norm_dst_inliers[i].x, vd = norm_dst_inliers[i].y;
 
-  // DEBUG: draw circles to check if the coresponding points are true
-  // circle(src_img, src_inliers[50].pt, 10, Scalar(0,0,255), 10);
-  // circle(dst_img, dst_inliers[50].pt, 10, Scalar(0,0,255), 10);
+		A.at<float>(i*2,0)=u;
+		A.at<float>(i*2,1)=v;
+		A.at<float>(i*2,2)=1;
+		A.at<float>(i*2,3)=0;
+		A.at<float>(i*2,4)=0;
+		A.at<float>(i*2,5)=0;
+		A.at<float>(i*2,6)=-u*ud;
+		A.at<float>(i*2,7)=-v*ud;
+		A.at<float>(i*2,8)=-ud;
 
+		A.at<float>(i*2+1,0)=0;
+		A.at<float>(i*2+1,1)=0;
+		A.at<float>(i*2+1,2)=0;
+		A.at<float>(i*2+1,3)=u;
+		A.at<float>(i*2+1,4)=v;
+		A.at<float>(i*2+1,5)=1;
+		A.at<float>(i*2+1,6)=-u*vd;
+		A.at<float>(i*2+1,7)=-v*vd;
+		A.at<float>(i*2+1,8)=-v;
+	}
+
+	Mat w, u, vt;
+	cv::SVDecomp(A, w, u, vt);
+
+	cv::Mat h(3, 3, CV_32F);
+	h.at<float>(0,0)=vt.at<float>(8,0);
+	h.at<float>(0,1)=vt.at<float>(8,1);
+	h.at<float>(0,2)=vt.at<float>(8,2);
+	h.at<float>(1,0)=vt.at<float>(8,3);
+	h.at<float>(1,1)=vt.at<float>(8,4);
+	h.at<float>(1,2)=vt.at<float>(8,5);
+	h.at<float>(2,0)=vt.at<float>(8,6);
+	h.at<float>(2,1)=vt.at<float>(8,7);
+	h.at<float>(2,2)=vt.at<float>(8,8);
+
+	h.convertTo(h, CV_64F);
+
+	// denormalize homography
+	h = T2.t() * h * T1;
+
+	Mat trans_img;
+	warpPerspective(src_img, trans_img, h, src_img.size());
 
 
   int key;
