@@ -179,6 +179,10 @@ int main(int argc, char* argv[]){
 		inlier_matches[inl_idx].trainIdx = inl_idx;
 	}
 
+
+	
+	Mat hom = findHomography(src_points, dst_points, CV_RANSAC);
+
 	// setup A matrix according to the slide 45 in http://cg.elte.hu/~hajder/vision/slides/lec01_camera.pdf
 	int sample_number = norm_src_inliers.size();
 	cv::Mat A(sample_number*2, 9, CV_32F);
@@ -232,10 +236,11 @@ int main(int argc, char* argv[]){
 
 	// wrap the prespective with new homography
 	Mat trans_img;
-	warpPerspective(src_img, trans_img, h, dst_img.size());
+	warpPerspective(src_img, trans_img, hom, dst_img.size());
 
 	// resize the image before showing it
 	float resize_factor = 0.25;
+	cout << "resizing images to " << to_string(resize_factor) << endl;
 	resize(src_img, src_img, Size(),resize_factor,resize_factor);
   resize(dst_img, dst_img, Size(),resize_factor,resize_factor);
 	resize(trans_img, trans_img, Size(),resize_factor,resize_factor);

@@ -7,7 +7,7 @@
             "command": "catkin_make",
             "args": [
                 "-j4",
-                "-DCMAKE_BUILD_TYPE=RELEASE",
+                "-DCMAKE_BUILD_TYPE=DEBUG",
                 "-DCMAKE_CXX_STANDARD=14"
             ],
             "problemMatcher": [],
