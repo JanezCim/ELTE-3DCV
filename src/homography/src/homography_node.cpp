@@ -179,60 +179,8 @@ int main(int argc, char* argv[]){
 		inlier_matches[inl_idx].trainIdx = inl_idx;
 	}
 
-
-	
+	// find homography with ransac
 	Mat hom = findHomography(src_points, dst_points, CV_RANSAC);
-
-	// setup A matrix according to the slide 45 in http://cg.elte.hu/~hajder/vision/slides/lec01_camera.pdf
-	int sample_number = norm_src_inliers.size();
-	cv::Mat A(sample_number*2, 9, CV_32F);
-	for (int i = 0; i < sample_number; i++){
-		const float u = norm_src_inliers[i].x, v = norm_src_inliers[i].y;
-		const float ud = norm_dst_inliers[i].x, vd = norm_dst_inliers[i].y;
-
-		A.at<float>(i*2,0)=u;
-		A.at<float>(i*2,1)=v;
-		A.at<float>(i*2,2)=1;
-		A.at<float>(i*2,3)=0;
-		A.at<float>(i*2,4)=0;
-		A.at<float>(i*2,5)=0;
-		A.at<float>(i*2,6)=-u*ud;
-		A.at<float>(i*2,7)=-v*ud;
-		A.at<float>(i*2,8)=-ud;
-
-		A.at<float>(i*2+1,0)=0;
-		A.at<float>(i*2+1,1)=0;
-		A.at<float>(i*2+1,2)=0;
-		A.at<float>(i*2+1,3)=u;
-		A.at<float>(i*2+1,4)=v;
-		A.at<float>(i*2+1,5)=1;
-		A.at<float>(i*2+1,6)=-u*vd;
-		A.at<float>(i*2+1,7)=-v*vd;
-		A.at<float>(i*2+1,8)=-v;
-	}
-
-	// apply the SVD to A
-	Mat w, u, vt;
-	cv::SVDecomp(A, w, u, vt);
-
-	// the last (9th) value of vt is the optimal homography
-	// here we convert it from 9x1 to 3x3
-	cv::Mat h(3, 3, CV_32F);
-	h.at<float>(0,0)=vt.at<float>(8,0);
-	h.at<float>(0,1)=vt.at<float>(8,1);
-	h.at<float>(0,2)=vt.at<float>(8,2);
-	h.at<float>(1,0)=vt.at<float>(8,3);
-	h.at<float>(1,1)=vt.at<float>(8,4);
-	h.at<float>(1,2)=vt.at<float>(8,5);
-	h.at<float>(2,0)=vt.at<float>(8,6);
-	h.at<float>(2,1)=vt.at<float>(8,7);
-	h.at<float>(2,2)=vt.at<float>(8,8);
-
-	// convert the homography to double
-	h.convertTo(h, CV_64F);
-
-	// denormalize homography
-	h = T2.inv() * h * T1;
 
 	// wrap the prespective with new homography
 	Mat trans_img;
